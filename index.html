@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroQuiz 70s</title>
+    
+    <!-- BIBLIOTECAS -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&family=Shrikhand&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --cor-laranja: #dc5128;
+            --cor-verde: #a2cebb;
+            --cor-creme: #fdfbf7;
+            --cor-preto: #1a1a1a;
+            --cor-amarelo: #f4d03f;
+        }
+
+        body {
+            background-color: var(--cor-creme);
+            /* PADRÃO DE FUNDO (Polka Dots Retrô - Ajustado) */
+            background-image:  radial-gradient(rgba(220, 81, 40, 0.08) 2px, transparent 2px), radial-gradient(rgba(220, 81, 40, 0.08) 2px, transparent 2px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+            
+            font-family: 'DM Sans', sans-serif;
+            color: var(--cor-preto);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .font-retro { font-family: 'Shrikhand', cursive; letter-spacing: 1px; }
+
+        .hard-shadow {
+            box-shadow: 4px 4px 0px 0px var(--cor-preto);
+            transition: all 0.2s ease;
+            border: 3px solid var(--cor-preto);
+        }
+        
+        .hard-shadow:active:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px var(--cor-preto);
+        }
+        
+        .hard-shadow:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // =================================================================
+        // 🔑 CONFIGURAÇÃO DA API 
+        // =================================================================
+        const API_KEY = "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"; // <--- COLE SUA CHAVE AQUI (ex: "sk-...")
+        const MAX_IMAGES = 3; 
+
+        // --- SERVIÇO DE API ---
+        const fetchQuestionsFromGPT = async (theme, level) => {
+            if (!API_KEY) return null; // Sem chave = usa Mock
+
+            const points = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
+            
+            const prompt = `
+                Crie 5 perguntas de múltipla escolha sobre o tema "${theme}" com dificuldade "${level}".
+                Responda APENAS com um array JSON válido neste formato:
+                [{"text": "Pergunta?", "options": ["Errada", "Certa", "Errada", "Errada"], "answer": "Certa"}]
+            `;
+
+            try {
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
+                    body: JSON.stringify({
+                        model: "gpt-4o",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.7
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) return null;
+
+                let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(content).map(q => ({ ...q, points }));
+            } catch (error) {
+                console.error("Erro API:", error);
+                return null;
+            }
+        };
+
+        // --- COMPONENTES UI ---
+
+        const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }) => {
+            const colors = {
+                primary: 'bg-[#dc5128] text-white',
+                secondary: 'bg-[#a2cebb] text-black',
+                yellow: 'bg-[#f4d03f] text-black',
+                white: 'bg-white text-black',
+                red: 'bg-red-500 text-white'
+            };
+            return (
+                <button 
+                    onClick={onClick} disabled={disabled}
+                    className={`hard-shadow rounded-lg px-6 py-3 font-bold text-lg flex items-center justify-center gap-2 ${colors[variant]} ${className}`}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const RetroImage = ({ src, className }) => {
+            const [error, setError] = useState(false);
+            if (error) return null; 
+            return <img src={src} className={className} onError={() => setError(true)} />;
+        };
+
+        // --- TELAS ---
+
+        const StartScreen = ({ onStart }) => {
+            const [theme, setTheme] = useState("");
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 relative animate-slide-in overflow-hidden">
+                    {/* Decorações Padrão (Tamanho Normal) */}
+                    <RetroImage src="assets/images/red/1.png" className="absolute left-4 top-1/4 w-32 md:w-48 hidden md:block opacity-80" />
+                    <RetroImage src="assets/images/red/2.png" className="absolute right-4 bottom-1/4 w-32 md:w-48 hidden md:block opacity-80" />
+
+                    <div className="text-center mb-10 w-full max-w-4xl relative z-10">
+                        {/* Logo/Texto Grande Mantido */}
+                        <img src="assets/images/RetroLogoOrange.PNG" alt="RetroQuiz" className="w-full max-w-3xl mx-auto mb-4" onError={(e) => {e.target.style.display='none'; document.getElementById('txt-logo').style.display='block'}} />
+                        <h1 id="txt-logo" className="font-retro text-8xl md:text-9xl text-[#dc5128] hidden drop-shadow-[4px_4px_0_black]">RetroQuiz</h1>
+                        <div  className="bg-[#a2cebb] border-2 border-black inline-block px-4 py-2 text-xl -rotate-2 font-bold shadow-[3px_3px_0_0_black]">Se desafie!</div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border-2 border-black relative z-10 hard-shadow w-full max-w-lg">
+                        <h2 className="text-2xl text-center mb-6 font-bold">Sobre qual tema você deseja testar seus conhecimentos?</h2>
+                        <div className="flex w-full gap-2">
+                            <input type="text" value={theme} onChange={(e) => setTheme(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && theme.trim() && onStart(theme)} placeholder="Digite o tema..." className="flex-1 p-4 text-xl border-3 border-black rounded-xl outline-none focus:ring-4 ring-[#a2cebb]" />
+                            <Button onClick={() => theme.trim() && onStart(theme)} disabled={!theme.trim()}><i data-lucide="arrow-right"></i></Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MenuScreen = ({ theme, onSelectLevel, onBack }) => (
+            <div className="min-h-screen flex flex-col p-6 max-w-5xl mx-auto animate-slide-in">
+                <button onClick={onBack} className="self-start flex items-center font-bold hover:underline mb-8 text-lg"><i data-lucide="arrow-left" className="mr-2"></i> Voltar</button>
+                <div className="text-center mb-10">
+                    <p className="text-gray-500 uppercase tracking-widest text-sm font-bold">Tema Escolhido</p>
+                    <h1 className="font-retro text-5xl md:text-6xl text-[#dc5128]">{theme}</h1>
+                </div>
+                <div className="grid md:grid-cols-3 gap-6">
+                    {[
+                        { id: 'easy', title: 'Fácil', color: 'bg-[#a2cebb]', desc: 'Básico.' },
+                        { id: 'medium', title: 'Médio', color: 'bg-[#f4d03f]', desc: 'Desafio.' },
+                        { id: 'hard', title: 'Difícil', color: 'bg-[#dc5128] text-white', desc: 'Expert.' }
+                    ].map(lvl => (
+                        <div key={lvl.id} onClick={() => onSelectLevel(lvl.id)} className={`${lvl.color} p-8 rounded-xl hard-shadow cursor-pointer hover:-translate-y-2 transition-all flex flex-col justify-between min-h-[200px]`}>
+                            <div><h2 className="font-retro text-3xl mb-2">{lvl.title}</h2><p className="font-bold text-lg opacity-90">{lvl.desc}</p></div>
+                            <div className="self-end mt-4"><i data-lucide="play-circle" size={40}></i></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const QuizScreen = ({ theme, level, onFinish, onAbort }) => {
+            const [loading, setLoading] = useState(true);
+            const [questions, setQuestions] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [isConfirmed, setIsConfirmed] = useState(false);
+            
+            const decoration = useMemo(() => {
+                const r1 = Math.floor(Math.random() * MAX_IMAGES) + 1;
+                let r2 = Math.floor(Math.random() * MAX_IMAGES) + 1;
+                if (r1 === r2) r2 = (r1 % MAX_IMAGES) + 1;
+                return { left: `assets/${level}/${r1}.png`, right: `assets/${level}/${r2}.png` };
+            }, [level]);
+
+            useEffect(() => {
+                let isMounted = true;
+                const load = async () => {
+                    const apiQuestions = await fetchQuestionsFromGPT(theme, level);
+                    if (isMounted) {
+                        if (apiQuestions) {
+                            setQuestions(apiQuestions);
+                        } else {
+                            const pts = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
+                            setQuestions(Array.from({ length: 5 }).map((_, i) => ({
+                                text: `(Modo Teste) Pergunta ${i+1} sobre ${theme}?`,
+                                options: ["Errada A", "Certa", "Errada B", "Errada C"].sort(() => Math.random() - 0.5),
+                                answer: "Certa",
+                                points: pts
+                            })));
+                        }
+                        setLoading(false);
+                    }
+                };
+                load();
+                return () => { isMounted = false; };
+            }, [theme, level]);
+
+            const handleConfirm = () => {
+                setIsConfirmed(true);
+                const currentQ = questions[currentIndex];
+                const correct = currentQ.answer === selectedOption;
+                
+                if (correct) {
+                    setScore(s => s + currentQ.points);
+                    confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
+                }
+
+                setTimeout(() => {
+                    if (currentIndex < questions.length - 1) {
+                        setCurrentIndex(p => p + 1);
+                        setSelectedOption(null);
+                        setIsConfirmed(false);
+                    } else {
+                        onFinish(correct ? score + currentQ.points : score, level);
+                    }
+                }, 1500);
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#dc5128]"></div>
+                        <h2 className="font-retro text-2xl mt-4 text-[#dc5128]">Carregando...</h2>
+                        <button onClick={onAbort} className="mt-8 text-gray-500 underline hover:text-black">Cancelar</button>
+                    </div>
+                );
+            }
+
+            const currentQ = questions[currentIndex];
+            const progress = ((currentIndex) / 5) * 100;
+
+            return (
+                <div className="min-h-screen flex flex-col relative overflow-hidden animate-slide-in">
+                    {/* Decorações Tamanho Normal */}
+                    <RetroImage src={decoration.left} className="absolute left-4 bottom-4 w-32 md:w-40 opacity-70 pointer-events-none hidden md:block" />
+                    <RetroImage src={decoration.right} className="absolute right-4 top-20 w-32 md:w-40 opacity-70 pointer-events-none hidden md:block" />
+
+                    {/* Header com Botão de Sair */}
+                    <div className="p-4 flex justify-between items-center bg-white border-b-4 border-black z-10">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onAbort} className="bg-red-100 hover:bg-red-200 p-2 rounded-lg border-2 border-black" title="Sair para Menu">
+                                <i data-lucide="x" className="text-red-600"></i>
+                            </button>
+                            <span className="font-bold text-lg">Questão {currentIndex + 1}/5</span>
+                        </div>
+                        <span className="font-retro text-2xl text-[#dc5128]">{score} pts</span>
+                    </div>
+
+                    <div className="h-4 bg-gray-200 w-full border-b-4 border-black">
+                        <div className="h-full bg-[#a2cebb] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-3xl mx-auto w-full z-10">
+                        <div className="bg-white border-4 border-black p-8 rounded-xl w-full mb-6 text-center hard-shadow">
+                            <h2 className="text-2xl font-bold leading-tight">{currentQ.text}</h2>
+                        </div>
+                        <div className="grid gap-3 w-full">
+                            {currentQ.options.map((opt, idx) => {
+                                let btnStyle = "bg-white hover:bg-gray-100";
+                                if (isConfirmed) {
+                                    if (opt === currentQ.answer) btnStyle = "bg-[#a2cebb] ring-4 ring-black"; 
+                                    else if (opt === selectedOption) btnStyle = "bg-[#dc5128] text-white";
+                                } else if (selectedOption === opt) {
+                                    btnStyle = "bg-[#f4d03f] ring-4 ring-black";
+                                }
+                                return (
+                                    <button key={idx} onClick={() => !isConfirmed && setSelectedOption(opt)} disabled={isConfirmed} className={`w-full p-4 text-lg font-bold border-3 border-black rounded-lg text-left transition-all flex items-center ${btnStyle}`}>
+                                        <span className="w-8 h-8 flex items-center justify-center bg-gray-100 border-2 border-black rounded-full mr-3 text-sm flex-shrink-0">{String.fromCharCode(65 + idx)}</span>
+                                        {opt}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-8 w-full md:w-auto">
+                            <Button onClick={handleConfirm} disabled={!selectedOption || isConfirmed} className="w-full md:min-w-[200px]">
+                                {isConfirmed ? "Verificando..." : "Confirmar"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ResultScreen = ({ score, level, totalScore, onRestart, onNextLevel, onMenu }) => {
+            const passed = score >= 30;
+            const nextLevelId = (level === 'easy') ? 'medium' : (level === 'medium' ? 'hard' : null);
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center animate-slide-in">
+                    <div className="bg-white hard-shadow p-8 rounded-2xl max-w-lg w-full relative border-4 border-black">
+                        <h2 className="text-gray-500 uppercase tracking-widest font-bold mb-2 text-sm">Resultado: {level}</h2>
+                        <h1 className="font-retro text-6xl text-[#dc5128] mb-4">{score > 30 ? "Arrasou!" : "Quase..."}</h1>
+                        <div className="bg-[#fdfbf7] border-3 border-black p-6 rounded-xl mb-6 inline-block w-full">
+                            <p className="text-sm font-bold uppercase text-gray-500 mb-2">Pontos da Fase</p>
+                            <p className="font-retro text-7xl text-[#1a1a1a] leading-none">{score}</p>
+                            <p className="text-lg font-bold mt-2 text-gray-600">Total: {totalScore}</p>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            {passed && nextLevelId && (
+                                <Button onClick={() => onNextLevel(nextLevelId)} variant="secondary" className="w-full">
+                                    Próximo Nível <i data-lucide="arrow-right"></i>
+                                </Button>
+                            )}
+                            <Button onClick={onMenu} variant="white" className="w-full">
+                                <i data-lucide="list"></i> Voltar ao Menu
+                            </Button>
+                            <Button onClick={onRestart} variant="white" className="w-full text-sm">
+                                <i data-lucide="rotate-ccw"></i> Tela Inicial
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [screen, setScreen] = useState('start');
+            const [theme, setTheme] = useState('');
+            const [level, setLevel] = useState('easy');
+            const [score, setScore] = useState(0);
+            const [totalScore, setTotalScore] = useState(0);
+
+            const startGame = (t) => { setTheme(t); setScreen('menu'); setTotalScore(0); };
+            const selectLevel = (l) => { setLevel(l); setScore(0); setScreen('quiz'); };
+            const finishQuiz = (s) => { setScore(s); setTotalScore(p => p + s); setScreen('result'); };
+            const nextLevel = (l) => { setLevel(l); setScore(0); setScreen('quiz'); };
+            const restart = () => { setTheme(''); setTotalScore(0); setScreen('start'); };
+            const backToMenu = () => { setScreen('menu'); };
+
+            useEffect(() => { if(window.lucide) window.lucide.createIcons(); }, [screen]);
+
+            return (
+                <>
+                    {screen === 'start' && <StartScreen onStart={startGame} />}
+                    {screen === 'menu' && <MenuScreen theme={theme} onSelectLevel={selectLevel} onBack={restart} />}
+                    {screen === 'quiz' && <QuizScreen theme={theme} level={level} onFinish={finishQuiz} onAbort={backToMenu} />}
+                    {screen === 'result' && <ResultScreen score={score} totalScore={totalScore} level={level} onRestart={restart} onNextLevel={nextLevel} onMenu={backToMenu} />}
+                </>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
