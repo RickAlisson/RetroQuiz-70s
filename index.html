@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RetroQuiz 70s</title>
+    <title>RetroQuiz 70s - AI Edition</title>
     
     <!-- BIBLIOTECAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -68,7 +68,7 @@
         // =================================================================
         // 🔑 CONFIGURAÇÃO DA API 
         // =================================================================
-        const API_KEY = "domain_pk_69206af0cbe881939825ea98063b391601401d8e53173bb6"; // <--- COLE SUA CHAVE AQUI (ex: "sk-...")
+        const API_KEY = "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"; // <--- COLE SUA CHAVE AQUI (ex: "sk-...")
         const MAX_IMAGES = 3; 
 
         // --- SERVIÇO DE API ---
@@ -77,10 +77,31 @@
 
             const points = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
             
+            // Definição estrita dos níveis para guiar a IA
+            const guidelines = {
+                easy: "Focus on general knowledge, famous facts, and main definitions. Suitable for beginners.",
+                medium: "Focus on specific details, relationships between concepts, and secondary facts. Requires intermediate knowledge.",
+                hard: "Focus on obscure trivia, specific dates, technical details, behind-the-scenes, or complex facts. Extremely difficult, for experts only."
+            };
+
+            // Prompt otimizado em Inglês (economiza tokens) com instrução de saída em PT-BR
+            // Adicionamos um timestamp para garantir aleatoriedade (seed)
             const prompt = `
-                Crie 5 perguntas de múltipla escolha sobre o tema "${theme}" com dificuldade "${level}".
-                Responda APENAS com um array JSON válido neste formato:
-                [{"text": "Pergunta?", "options": ["Errada", "Certa", "Errada", "Errada"], "answer": "Certa"}]
+                Generate 5 UNIQUE multiple-choice questions about the topic "${theme}".
+                Target Audience Language: Brazilian Portuguese (pt-BR).
+                Difficulty Level: ${level.toUpperCase()}.
+                
+                Guideline for difficulty: ${guidelines[level]}
+                
+                Strict Rules:
+                1. Output MUST be a valid JSON array.
+                2. Do NOT use Markdown formatting (no \`\`\`).
+                3. Provide 4 options per question (1 correct, 3 wrong).
+                4. Ensure questions are distinct from common examples.
+                5. Random Seed: ${Date.now()}
+                
+                JSON Format:
+                [{"text": "Question in Portuguese?", "options": ["Wrong1", "Correct", "Wrong2", "Wrong3"], "answer": "Correct"}]
             `;
 
             try {
@@ -90,7 +111,7 @@
                     body: JSON.stringify({
                         model: "gpt-4o",
                         messages: [{ role: "user", content: prompt }],
-                        temperature: 0.7
+                        temperature: 0.8 // Aumentei levemente a criatividade para evitar repetição
                     })
                 });
 
@@ -145,7 +166,7 @@
                         {/* Logo/Texto Grande Mantido */}
                         <img src="assets/images/RetroLogoOrange.PNG" alt="RetroQuiz" className="w-full max-w-3xl mx-auto mb-4" onError={(e) => {e.target.style.display='none'; document.getElementById('txt-logo').style.display='block'}} />
                         <h1 id="txt-logo" className="font-retro text-8xl md:text-9xl text-[#dc5128] hidden drop-shadow-[4px_4px_0_black]">RetroQuiz</h1>
-                        <div  className="bg-[#a2cebb] border-2 border-black inline-block px-4 py-2 text-xl -rotate-2 font-bold shadow-[3px_3px_0_0_black]">Se desafie!</div>
+                        <div className="bg-[#a2cebb] border-2 border-black inline-block px-4 py-2 text-xl -rotate-2 font-bold shadow-[3px_3px_0_0_black]">Se desafie!</div>
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl border-2 border-black relative z-10 hard-shadow w-full max-w-lg">
@@ -367,5 +388,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
