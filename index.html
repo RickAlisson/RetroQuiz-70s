@@ -64,20 +64,15 @@
         const { useState, useEffect, useMemo } = React;
 
         // =================================================================
-        // 🔑 CONFIGURAÇÃO DA API (OFUSCADA PARA O GITHUB)
+        // 🔑 CONFIGURAÇÃO DA API 
         // =================================================================
-        // Substitua as partes abaixo pela sua NOVA chave dividida em duas.
-        // Exemplo: Se a chave é "sk-proj-1234567890abcdef"
-        // PART_A = "sk-proj-12345678"
-        // PART_B = "90abcdef"
-        
         const PART_A = "sk-proj-Wuj2j8kDamPxvALe8xWXhvxMMwsWxUwftwzkmeL1ylnGzYPMdU1QYAO1B1Wpxyn"; 
         const PART_B = "QLrQfDGcIMOT3BlbkFJM5YNmkMRwdetW1loy5AYAhEfO6pQb0iJCbBJiTw0Wh3O5tQg-cAWmeu7VisSbjIQ6zu4HAsx4A"; 
         
-        const API_KEY = PART_A + PART_B; // Reconstrói a chave em tempo real
+        const API_KEY = PART_A + PART_B; 
         const MAX_IMAGES = 3; 
 
-        // --- SERVIÇO DE API ---
+        // --- SERVIÇO DE API COM PROTEÇÃO DE TEMA ---
         const fetchQuestionsFromGPT = async (theme, level) => {
             if (!API_KEY || API_KEY.includes("SUA_CHAVE")) return null; 
 
@@ -89,21 +84,28 @@
                 hard: "Focus on obscure trivia, specific dates, technical details, behind-the-scenes, or complex facts. Extremely difficult, for experts only."
             };
 
+            // Prompt com Guardrail (Proteção contra nonsense)
             const prompt = `
-                Generate 5 UNIQUE multiple-choice questions about the topic "${theme}".
+                Analyze the topic: "${theme}".
+                
+                TASK 1: VALIDATION
+                If the topic is gibberish (e.g. "asdf", "lkjlkj"), nonsensical (e.g. "soap pineapple grape"), offensive, or too vague to form a factual quiz, return EXACTLY this JSON:
+                {"error": "Não foi possível identificar um tema válido. Por favor, digite um assunto real e específico."}
+
+                TASK 2: GENERATION (Only if valid)
+                Generate 5 UNIQUE multiple-choice questions.
                 Target Audience Language: Brazilian Portuguese (pt-BR).
                 Difficulty Level: ${level.toUpperCase()}.
-                
-                Guideline for difficulty: ${guidelines[level]}
+                Guideline: ${guidelines[level]}
                 
                 Strict Rules:
-                1. Output MUST be a valid JSON array.
+                1. Output MUST be a valid JSON array or the error object.
                 2. Do NOT use Markdown formatting (no \`\`\`).
                 3. Provide 4 options per question (1 correct, 3 wrong).
                 4. Ensure questions are distinct from common examples.
                 5. Random Seed: ${Date.now()}
                 
-                JSON Format:
+                JSON Format for valid quiz:
                 [{"text": "Question in Portuguese?", "options": ["Wrong1", "Correct", "Wrong2", "Wrong3"], "answer": "Correct"}]
             `;
 
@@ -114,18 +116,31 @@
                     body: JSON.stringify({
                         model: "gpt-4o",
                         messages: [{ role: "user", content: prompt }],
-                        temperature: 0.8
+                        temperature: 0.7
                     })
                 });
 
                 const data = await response.json();
                 if (data.error) {
                     console.error("Erro OpenAI:", data.error);
-                    return null;
+                    return { error: "Erro de conexão com a IA." };
                 }
 
                 let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
-                return JSON.parse(content).map(q => ({ ...q, points }));
+                const parsed = JSON.parse(content);
+
+                // Verifica se o GPT retornou o erro de validação
+                if (parsed.error) {
+                    return { error: parsed.error };
+                }
+
+                // Se for array, mapeia os pontos
+                if (Array.isArray(parsed)) {
+                    return parsed.map(q => ({ ...q, points }));
+                }
+                
+                return { error: "Formato de resposta inválido." };
+
             } catch (error) {
                 console.error("Erro API:", error);
                 return null;
@@ -207,7 +222,8 @@
         );
 
         const QuizScreen = ({ theme, level, onFinish, onAbort }) => {
-            const [loading, setLoading] = useState(true);
+            const [status, setStatus] = useState('loading'); // loading, error, ready
+            const [errorMessage, setErrorMessage] = useState("");
             const [questions, setQuestions] = useState([]);
             const [currentIndex, setCurrentIndex] = useState(0);
             const [score, setScore] = useState(0);
@@ -224,20 +240,26 @@
             useEffect(() => {
                 let isMounted = true;
                 const load = async () => {
-                    const apiQuestions = await fetchQuestionsFromGPT(theme, level);
-                    if (isMounted) {
-                        if (apiQuestions) {
-                            setQuestions(apiQuestions);
-                        } else {
-                            const pts = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
-                            setQuestions(Array.from({ length: 5 }).map((_, i) => ({
-                                text: `(Modo Teste) Pergunta ${i+1} sobre ${theme}?`,
-                                options: ["Errada A", "Certa", "Errada B", "Errada C"].sort(() => Math.random() - 0.5),
-                                answer: "Certa",
-                                points: pts
-                            })));
-                        }
-                        setLoading(false);
+                    const result = await fetchQuestionsFromGPT(theme, level);
+                    
+                    if (!isMounted) return;
+
+                    if (result && result.error) {
+                        setErrorMessage(result.error);
+                        setStatus('error');
+                    } else if (result && Array.isArray(result)) {
+                        setQuestions(result);
+                        setStatus('ready');
+                    } else {
+                        // Fallback (Mock)
+                        const pts = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
+                        setQuestions(Array.from({ length: 5 }).map((_, i) => ({
+                            text: `(Modo Teste) Pergunta ${i+1} sobre ${theme}?`,
+                            options: ["Errada A", "Certa", "Errada B", "Errada C"].sort(() => Math.random() - 0.5),
+                            answer: "Certa",
+                            points: pts
+                        })));
+                        setStatus('ready');
                     }
                 };
                 load();
@@ -265,16 +287,36 @@
                 }, 1500);
             };
 
-            if (loading) {
+            // TELA DE CARREGAMENTO
+            if (status === 'loading') {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center">
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#dc5128]"></div>
-                        <h2 className="font-retro text-2xl mt-4 text-[#dc5128]">Carregando...</h2>
+                        <h2 className="font-retro text-2xl mt-4 text-[#dc5128]">Gerando Perguntas...</h2>
                         <button onClick={onAbort} className="mt-8 text-gray-500 underline hover:text-black">Cancelar</button>
                     </div>
                 );
             }
 
+            // TELA DE ERRO (Guardrail)
+            if (status === 'error') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-slide-in">
+                        <div className="bg-white hard-shadow p-8 rounded-2xl max-w-md w-full text-center border-4 border-[#dc5128]">
+                            <div className="flex justify-center mb-4">
+                                <i data-lucide="alert-triangle" className="text-[#dc5128] w-16 h-16"></i>
+                            </div>
+                            <h2 className="font-retro text-3xl mb-4 text-[#1a1a1a]">Ops!</h2>
+                            <p className="text-xl mb-8 font-medium">{errorMessage}</p>
+                            <Button onClick={onAbort} variant="primary" className="w-full">
+                                Tentar outro tema
+                            </Button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // TELA DO QUIZ (Jogo Normal)
             const currentQ = questions[currentIndex];
             const progress = ((currentIndex) / 5) * 100;
 
@@ -285,7 +327,7 @@
 
                     <div className="p-4 flex justify-between items-center bg-white border-b-4 border-black z-10">
                         <div className="flex items-center gap-4">
-                            <button onClick={onAbort} className="bg-red-100 hover:bg-red-200 p-2 rounded-lg border-2 border-black" title="Sair para Menu">
+                            <button onClick={onAbort} className="bg-red-100 hover:bg-red-200 p-2 rounded-lg border-2 border-black transition-colors" title="Sair para Menu">
                                 <i data-lucide="x" className="text-red-600"></i>
                             </button>
                             <span className="font-bold text-lg">Questão {currentIndex + 1}/5</span>
