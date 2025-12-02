@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RetroQuiz 70s</title>
+    <title>RetroQuiz 70s - Auth & Offline</title>
     
     <!-- BIBLIOTECAS -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -54,6 +54,21 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+
+        /* Estilos específicos para o Login */
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 3px solid var(--cor-preto);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .login-input:focus {
+            border-color: var(--cor-laranja);
+            background-color: #fff8f0;
+        }
     </style>
 </head>
 <body>
@@ -64,49 +79,92 @@
         const { useState, useEffect, useMemo } = React;
 
         // =================================================================
-        // 🔑 CONFIGURAÇÃO DA API 
+        // 🔑 CONFIGURAÇÃO DA API & DADOS
         // =================================================================
         const PART_A = "sk-proj-Wuj2j8kDamPxvALe8xWXhvxMMwsWxUwftwzkmeL1ylnGzYPMdU1QYAO1B1Wpxyn"; 
         const PART_B = "QLrQfDGcIMOT3BlbkFJM5YNmkMRwdetW1loy5AYAhEfO6pQb0iJCbBJiTw0Wh3O5tQg-cAWmeu7VisSbjIQ6zu4HAsx4A"; 
-        
         const API_KEY = PART_A + PART_B; 
         const MAX_IMAGES = 3; 
 
-        // --- SERVIÇO DE API COM PROTEÇÃO DE TEMA ---
-        const fetchQuestionsFromGPT = async (theme, level) => {
-            if (!API_KEY || API_KEY.includes("SUA_CHAVE")) return null; 
+        // -----------------------------------------------------------------
+        // 📚 BANCO DE DADOS OFFLINE (Temas Pré-definidos)
+        // -----------------------------------------------------------------
+        const OFFLINE_DB = {
+            "Cinema": {
+                easy: [
+                    { text: "Qual filme tem um ogro verde como protagonista?", options: ["Shrek", "Hulk", "Grinch", "Yoda"], answer: "Shrek", points: 10 },
+                    { text: "Quem é o vilão de Star Wars que usa armadura preta?", options: ["Darth Vader", "Voldemort", "Coringa", "Thanos"], answer: "Darth Vader", points: 10 },
+                    { text: "Qual animal é o Rei Leão?", options: ["Leão", "Tigre", "Urso", "Lobo"], answer: "Leão", points: 10 },
+                    { text: "Em 'Titanic', o que causa o naufrágio?", options: ["Iceberg", "Baleia", "Torpedo", "Tempestade"], answer: "Iceberg", points: 10 },
+                    { text: "Qual brinquedo ganha vida em Toy Story?", options: ["Todos os brinquedos", "Apenas o Woody", "Nenhum", "Bonecas apenas"], answer: "Todos os brinquedos", points: 10 }
+                ],
+                medium: [
+                    { text: "Quem dirigiu 'Parque dos Dinossauros' (1993)?", options: ["Steven Spielberg", "George Lucas", "James Cameron", "Tarantino"], answer: "Steven Spielberg", points: 20 },
+                    { text: "Qual a pílula que Neo toma em Matrix?", options: ["Vermelha", "Azul", "Verde", "Amarela"], answer: "Vermelha", points: 20 },
+                    { text: "Em 'O Senhor dos Anéis', quantos anéis foram dados aos Anões?", options: ["7", "3", "9", "1"], answer: "7", points: 20 },
+                    { text: "Qual o nome da cidade fictícia do Batman?", options: ["Gotham", "Metropolis", "Star City", "Smallville"], answer: "Gotham", points: 20 },
+                    { text: "Quem interpretou o Coringa em 'O Cavaleiro das Trevas'?", options: ["Heath Ledger", "Joaquin Phoenix", "Jared Leto", "Jack Nicholson"], answer: "Heath Ledger", points: 20 }
+                ],
+                hard: [
+                    { text: "Qual foi o primeiro filme a ganhar o Oscar de Melhor Filme?", options: ["Wings", "Sunrise", "Metropolis", "The Jazz Singer"], answer: "Wings", points: 30 },
+                    { text: "Em 'Pulp Fiction', o que tem dentro da maleta?", options: ["Nunca é revelado", "Ouro", "Diamantes", "A alma do Marsellus"], answer: "Nunca é revelado", points: 30 },
+                    { text: "Qual o nome do robô em 'Interstellar'?", options: ["TARS", "HAL", "R2-D2", "Ava"], answer: "TARS", points: 30 },
+                    { text: "Quem compôs a trilha sonora de 'O Bom, o Mau e o Feio'?", options: ["Ennio Morricone", "Hans Zimmer", "John Williams", "Vangelis"], answer: "Ennio Morricone", points: 30 },
+                    { text: "Em que ano estreou 'O Poderoso Chefão'?", options: ["1972", "1974", "1969", "1970"], answer: "1972", points: 30 }
+                ]
+            },
+            "Ciências": {
+                easy: [
+                    { text: "Qual planeta é conhecido como Planeta Vermelho?", options: ["Marte", "Júpiter", "Vênus", "Saturno"], answer: "Marte", points: 10 },
+                    { text: "O que as plantas usam para fazer fotossíntese?", options: ["Luz solar", "Fogo", "Vento", "Areia"], answer: "Luz solar", points: 10 },
+                    { text: "Qual é a fórmula da água?", options: ["H2O", "CO2", "O2", "H2SO4"], answer: "H2O", points: 10 },
+                    { text: "Quantas pernas tem uma aranha?", options: ["8", "6", "4", "10"], answer: "8", points: 10 },
+                    { text: "Qual órgão bombeia sangue no corpo?", options: ["Coração", "Fígado", "Pulmão", "Estômago"], answer: "Coração", points: 10 }
+                ],
+                medium: [
+                    { text: "Qual é o metal líquido à temperatura ambiente?", options: ["Mercúrio", "Ferro", "Chumbo", "Alumínio"], answer: "Mercúrio", points: 20 },
+                    { text: "Quem propôs a Teoria da Relatividade?", options: ["Einstein", "Newton", "Tesla", "Darwin"], answer: "Einstein", points: 20 },
+                    { text: "Qual o símbolo químico do Ouro?", options: ["Au", "Ag", "Fe", "Cu"], answer: "Au", points: 20 },
+                    { text: "Qual a velocidade da luz (aprox)?", options: ["300.000 km/s", "150.000 km/s", "1.000 km/s", "Som"], answer: "300.000 km/s", points: 20 },
+                    { text: "O que é o DNA?", options: ["Ácido Desoxirribonucleico", "Ácido Ribonucleico", "Proteína", "Gordura"], answer: "Ácido Desoxirribonucleico", points: 20 }
+                ],
+                hard: [
+                    { text: "Qual partícula é conhecida como 'Partícula de Deus'?", options: ["Bóson de Higgs", "Quark", "Neutrino", "Fóton"], answer: "Bóson de Higgs", points: 30 },
+                    { text: "Quem descobriu a Penicilina?", options: ["Fleming", "Pasteur", "Curie", "Darwin"], answer: "Fleming", points: 30 },
+                    { text: "Qual é a estrela mais próxima da Terra depois do Sol?", options: ["Proxima Centauri", "Sirius", "Alpha Centauri A", "Betelgeuse"], answer: "Proxima Centauri", points: 30 },
+                    { text: "O que mede a escala de Mohs?", options: ["Dureza dos minerais", "Terremotos", "Ventos", "Acidez"], answer: "Dureza dos minerais", points: 30 },
+                    { text: "Qual o nome da primeira ovelha clonada?", options: ["Dolly", "Molly", "Polly", "Holly"], answer: "Dolly", points: 30 }
+                ]
+            }
+        };
 
-            const points = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
-            
-            const guidelines = {
-                easy: "Focus on general knowledge, famous facts, and main definitions. Suitable for beginners.",
-                medium: "Focus on specific details, relationships between concepts, and secondary facts. Requires intermediate knowledge.",
-                hard: "Focus on obscure trivia, specific dates, technical details, behind-the-scenes, or complex facts. Extremely difficult, for experts only."
-            };
+        // --- SERVIÇO DE API (MODIFICADO PARA PEGAR TUDO DE UMA VEZ) ---
+        const fetchAllQuestionsFromGPT = async (theme) => {
+            // Se for um tema Offline, retorna direto
+            if (OFFLINE_DB[theme]) {
+                console.log("Usando banco offline para:", theme);
+                await new Promise(r => setTimeout(r, 1000)); // Fake loading
+                return OFFLINE_DB[theme];
+            }
 
-            // Prompt com Guardrail (Proteção contra nonsense)
+            if (!API_KEY) return { error: "API Key não configurada." };
+
             const prompt = `
-                Analyze the topic: "${theme}".
+                Topic: "${theme}".
                 
-                TASK 1: VALIDATION
-                If the topic is gibberish (e.g. "asdf", "lkjlkj"), nonsensical (e.g. "soap pineapple grape"), offensive, or too vague to form a factual quiz, return EXACTLY this JSON:
-                {"error": "Não foi possível identificar um tema válido. Por favor, digite um assunto real e específico."}
-
-                TASK 2: GENERATION (Only if valid)
-                Generate 5 UNIQUE multiple-choice questions.
+                Generate a COMPLETE QUIZ with 15 UNIQUE multiple-choice questions divided into 3 levels:
+                - 5 Easy questions (Basic definitions, famous facts)
+                - 5 Medium questions (Specific details, relationships)
+                - 5 Hard questions (Obscure trivia, technical dates/facts)
+                
                 Target Audience Language: Brazilian Portuguese (pt-BR).
-                Difficulty Level: ${level.toUpperCase()}.
-                Guideline: ${guidelines[level]}
                 
-                Strict Rules:
-                1. Output MUST be a valid JSON array or the error object.
-                2. Do NOT use Markdown formatting (no \`\`\`).
-                3. Provide 4 options per question (1 correct, 3 wrong).
-                4. Ensure questions are distinct from common examples.
-                5. Random Seed: ${Date.now()}
-                
-                JSON Format for valid quiz:
-                [{"text": "Question in Portuguese?", "options": ["Wrong1", "Correct", "Wrong2", "Wrong3"], "answer": "Correct"}]
+                Strict Output Rules:
+                1. Return ONLY a valid JSON object. No Markdown.
+                2. Structure: { "easy": [...5 objects], "medium": [...5 objects], "hard": [...5 objects] }
+                3. Each question object: { "text": "Question?", "options": ["A", "B", "C", "D"], "answer": "Correct Option String" }
+                4. Ensure NO repeated questions across levels.
+                5. Ensure 1 correct answer and 3 wrong answers per question.
             `;
 
             try {
@@ -121,29 +179,26 @@
                 });
 
                 const data = await response.json();
-                if (data.error) {
-                    console.error("Erro OpenAI:", data.error);
-                    return { error: "Erro de conexão com a IA." };
-                }
+                if (data.error) return { error: "Erro na API: " + data.error.message };
 
                 let content = data.choices[0].message.content.replace(/```json/g, '').replace(/```/g, '').trim();
                 const parsed = JSON.parse(content);
 
-                // Verifica se o GPT retornou o erro de validação
-                if (parsed.error) {
-                    return { error: parsed.error };
+                // Validar estrutura básica
+                if (!parsed.easy || !parsed.medium || !parsed.hard) {
+                    return { error: "A IA não retornou os 3 níveis corretamente." };
                 }
 
-                // Se for array, mapeia os pontos
-                if (Array.isArray(parsed)) {
-                    return parsed.map(q => ({ ...q, points }));
-                }
-                
-                return { error: "Formato de resposta inválido." };
+                // Adicionar pontos
+                parsed.easy = parsed.easy.map(q => ({...q, points: 10}));
+                parsed.medium = parsed.medium.map(q => ({...q, points: 20}));
+                parsed.hard = parsed.hard.map(q => ({...q, points: 30}));
+
+                return parsed;
 
             } catch (error) {
                 console.error("Erro API:", error);
-                return null;
+                return { error: "Falha na conexão. Tente um tema offline." };
             }
         };
 
@@ -155,7 +210,8 @@
                 secondary: 'bg-[#a2cebb] text-black',
                 yellow: 'bg-[#f4d03f] text-black',
                 white: 'bg-white text-black',
-                red: 'bg-red-500 text-white'
+                red: 'bg-red-500 text-white',
+                outline: 'bg-transparent border-2 border-black hover:bg-black/5'
             };
             return (
                 <button 
@@ -173,10 +229,76 @@
             return <img src={src} className={className} onError={() => setError(true)} />;
         };
 
-        // --- TELAS ---
+        // --- TELA DE LOGIN ---
+        const LoginScreen = ({ onLoginSuccess }) => {
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [error, setError] = useState("");
 
-        const StartScreen = ({ onStart }) => {
+            const handleLogin = () => {
+                if (email === "rickalissonpaz@gmail.com" && password === "12345678") {
+                    onLoginSuccess();
+                } else {
+                    setError("Credenciais inválidas.");
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                    <div className="bg-white hard-shadow p-8 rounded-2xl max-w-md w-full border-4 border-black relative">
+                        <div className="text-center mb-6">
+                            <h1 className="font-retro text-4xl text-[#dc5128]">RetroQuiz</h1>
+                            <p className="font-bold text-gray-500">Área Restrita</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block font-bold mb-1">E-mail</label>
+                                <input 
+                                    type="email" 
+                                    className="login-input" 
+                                    placeholder="seu@email.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-bold mb-1">Senha</label>
+                                <input 
+                                    type="password" 
+                                    className="login-input" 
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                            
+                            {error && (
+                                <div className="bg-red-100 border-2 border-red-500 text-red-700 p-3 rounded mb-4 font-bold text-sm">
+                                    {error}
+                                    <div className="mt-2 text-xs font-normal">
+                                        Não tem acesso? Solicite via WhatsApp:<br/>
+                                        <a href="https://wa.me/5511957970304" target="_blank" className="underline font-bold hover:text-red-900">(11) 95797-0304</a>
+                                    </div>
+                                </div>
+                            )}
+
+                            <Button onClick={handleLogin} className="w-full">Entrar</Button>
+                        </div>
+                    </div>
+                    <div className="mt-8 text-center text-sm font-bold opacity-60">
+                        <p>Acesso exclusivo para convidados.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const StartScreen = ({ onStart, loading }) => {
             const [theme, setTheme] = useState("");
+            
+            // Temas pré-definidos (Offline e Online)
+            const presets = ["Cinema", "Ciências", "Anos 80", "História"];
+
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center p-4 relative animate-slide-in overflow-hidden">
                     <RetroImage src="assets/images/red/1.png" className="absolute left-4 top-1/4 w-32 md:w-48 hidden md:block opacity-80" />
@@ -185,16 +307,44 @@
                     <div className="text-center mb-10 w-full max-w-4xl relative z-10">
                         <img src="assets/images/RetroLogoOrange.PNG" alt="RetroQuiz" className="w-full max-w-3xl mx-auto mb-4" onError={(e) => {e.target.style.display='none'; document.getElementById('txt-logo').style.display='block'}} />
                         <h1 id="txt-logo" className="font-retro text-8xl md:text-9xl text-[#dc5128] hidden drop-shadow-[4px_4px_0_black]">RetroQuiz</h1>
-                        <div className="bg-[#a2cebb] border-2 border-black inline-block px-4 py-2 text-xl -rotate-2 font-bold shadow-[3px_3px_0_0_black]">Se desafie!</div>
+                        <div className="bg-[#a2cebb] border-2 border-black inline-block px-4 py-2 text-xl -rotate-2 font-bold shadow-[3px_3px_0_0_black]">Edição Premium</div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border-2 border-black relative z-10 hard-shadow w-full max-w-lg">
-                        <h2 className="text-2xl text-center mb-6 font-bold">Sobre qual tema você deseja testar seus conhecimentos?</h2>
-                        <div className="flex w-full gap-2">
-                            <input type="text" value={theme} onChange={(e) => setTheme(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && theme.trim() && onStart(theme)} placeholder="Digite o tema..." className="flex-1 p-4 text-xl border-3 border-black rounded-xl outline-none focus:ring-4 ring-[#a2cebb]" />
-                            <Button onClick={() => theme.trim() && onStart(theme)} disabled={!theme.trim()}><i data-lucide="arrow-right"></i></Button>
+                    {loading ? (
+                        <div className="bg-white p-10 rounded-2xl border-2 border-black hard-shadow flex flex-col items-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#dc5128] mb-4"></div>
+                            <h2 className="font-retro text-2xl text-[#dc5128]">Preparando Perguntas...</h2>
+                            <p className="font-bold text-gray-500">Criando desafios únicos para você.</p>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="bg-white p-6 rounded-2xl border-2 border-black relative z-10 hard-shadow w-full max-w-lg">
+                            <h2 className="text-2xl text-center mb-6 font-bold">Escolha um tema ou digite o seu:</h2>
+                            
+                            {/* Opções Pré-definidas */}
+                            <div className="grid grid-cols-2 gap-3 mb-6">
+                                {presets.map(p => (
+                                    <button 
+                                        key={p} 
+                                        onClick={() => onStart(p)}
+                                        className={`font-bold py-2 border-2 border-black rounded-lg hover:bg-[#f4d03f] transition-colors ${OFFLINE_DB[p] ? 'bg-green-50' : 'bg-gray-50'}`}
+                                    >
+                                        {p} {OFFLINE_DB[p] && <span className="text-[10px] bg-green-200 px-1 rounded ml-1 border border-green-600">OFF</span>}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative flex items-center mb-2">
+                                <div className="flex-grow border-t border-gray-300"></div>
+                                <span className="flex-shrink-0 mx-4 text-gray-400 font-bold text-sm">OU DIGITE</span>
+                                <div className="flex-grow border-t border-gray-300"></div>
+                            </div>
+
+                            <div className="flex w-full gap-2">
+                                <input type="text" value={theme} onChange={(e) => setTheme(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && theme.trim() && onStart(theme)} placeholder="Qualquer assunto..." className="flex-1 p-4 text-xl border-3 border-black rounded-xl outline-none focus:ring-4 ring-[#a2cebb]" />
+                                <Button onClick={() => theme.trim() && onStart(theme)} disabled={!theme.trim()}><i data-lucide="arrow-right"></i></Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -208,9 +358,9 @@
                 </div>
                 <div className="grid md:grid-cols-3 gap-6">
                     {[
-                        { id: 'easy', title: 'Fácil', color: 'bg-[#a2cebb]', desc: 'Básico.' },
-                        { id: 'medium', title: 'Médio', color: 'bg-[#f4d03f]', desc: 'Desafio.' },
-                        { id: 'hard', title: 'Difícil', color: 'bg-[#dc5128] text-white', desc: 'Expert.' }
+                        { id: 'easy', title: 'Fácil', color: 'bg-[#a2cebb]', desc: 'Aquecimento' },
+                        { id: 'medium', title: 'Médio', color: 'bg-[#f4d03f]', desc: 'O Desafio' },
+                        { id: 'hard', title: 'Difícil', color: 'bg-[#dc5128] text-white', desc: 'Expert' }
                     ].map(lvl => (
                         <div key={lvl.id} onClick={() => onSelectLevel(lvl.id)} className={`${lvl.color} p-8 rounded-xl hard-shadow cursor-pointer hover:-translate-y-2 transition-all flex flex-col justify-between min-h-[200px]`}>
                             <div><h2 className="font-retro text-3xl mb-2">{lvl.title}</h2><p className="font-bold text-lg opacity-90">{lvl.desc}</p></div>
@@ -221,10 +371,7 @@
             </div>
         );
 
-        const QuizScreen = ({ theme, level, onFinish, onAbort }) => {
-            const [status, setStatus] = useState('loading'); // loading, error, ready
-            const [errorMessage, setErrorMessage] = useState("");
-            const [questions, setQuestions] = useState([]);
+        const QuizScreen = ({ theme, level, questions, onFinish, onAbort }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [score, setScore] = useState(0);
             const [selectedOption, setSelectedOption] = useState(null);
@@ -236,35 +383,6 @@
                 if (r1 === r2) r2 = (r1 % MAX_IMAGES) + 1;
                 return { left: `assets/${level}/${r1}.png`, right: `assets/${level}/${r2}.png` };
             }, [level]);
-
-            useEffect(() => {
-                let isMounted = true;
-                const load = async () => {
-                    const result = await fetchQuestionsFromGPT(theme, level);
-                    
-                    if (!isMounted) return;
-
-                    if (result && result.error) {
-                        setErrorMessage(result.error);
-                        setStatus('error');
-                    } else if (result && Array.isArray(result)) {
-                        setQuestions(result);
-                        setStatus('ready');
-                    } else {
-                        // Fallback (Mock)
-                        const pts = level === 'easy' ? 10 : (level === 'medium' ? 20 : 30);
-                        setQuestions(Array.from({ length: 5 }).map((_, i) => ({
-                            text: `(Modo Teste) Pergunta ${i+1} sobre ${theme}?`,
-                            options: ["Errada A", "Certa", "Errada B", "Errada C"].sort(() => Math.random() - 0.5),
-                            answer: "Certa",
-                            points: pts
-                        })));
-                        setStatus('ready');
-                    }
-                };
-                load();
-                return () => { isMounted = false; };
-            }, [theme, level]);
 
             const handleConfirm = () => {
                 setIsConfirmed(true);
@@ -287,38 +405,8 @@
                 }, 1500);
             };
 
-            // TELA DE CARREGAMENTO
-            if (status === 'loading') {
-                return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#dc5128]"></div>
-                        <h2 className="font-retro text-2xl mt-4 text-[#dc5128]">Gerando Perguntas...</h2>
-                        <button onClick={onAbort} className="mt-8 text-gray-500 underline hover:text-black">Cancelar</button>
-                    </div>
-                );
-            }
-
-            // TELA DE ERRO (Guardrail)
-            if (status === 'error') {
-                return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-slide-in">
-                        <div className="bg-white hard-shadow p-8 rounded-2xl max-w-md w-full text-center border-4 border-[#dc5128]">
-                            <div className="flex justify-center mb-4">
-                                <i data-lucide="alert-triangle" className="text-[#dc5128] w-16 h-16"></i>
-                            </div>
-                            <h2 className="font-retro text-3xl mb-4 text-[#1a1a1a]">Ops!</h2>
-                            <p className="text-xl mb-8 font-medium">{errorMessage}</p>
-                            <Button onClick={onAbort} variant="primary" className="w-full">
-                                Tentar outro tema
-                            </Button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // TELA DO QUIZ (Jogo Normal)
             const currentQ = questions[currentIndex];
-            const progress = ((currentIndex) / 5) * 100;
+            const progress = ((currentIndex) / questions.length) * 100;
 
             return (
                 <div className="min-h-screen flex flex-col relative overflow-hidden animate-slide-in">
@@ -330,7 +418,7 @@
                             <button onClick={onAbort} className="bg-red-100 hover:bg-red-200 p-2 rounded-lg border-2 border-black transition-colors" title="Sair para Menu">
                                 <i data-lucide="x" className="text-red-600"></i>
                             </button>
-                            <span className="font-bold text-lg">Questão {currentIndex + 1}/5</span>
+                            <span className="font-bold text-lg">Questão {currentIndex + 1}/{questions.length}</span>
                         </div>
                         <span className="font-retro text-2xl text-[#dc5128]">{score} pts</span>
                     </div>
@@ -371,30 +459,30 @@
         };
 
         const ResultScreen = ({ score, level, totalScore, onRestart, onNextLevel, onMenu }) => {
-            const passed = score >= 30;
+            const passed = score >= 30; // 30 points to pass
             const nextLevelId = (level === 'easy') ? 'medium' : (level === 'medium' ? 'hard' : null);
 
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center animate-slide-in">
                     <div className="bg-white hard-shadow p-8 rounded-2xl max-w-lg w-full relative border-4 border-black">
                         <h2 className="text-gray-500 uppercase tracking-widest font-bold mb-2 text-sm">Resultado: {level}</h2>
-                        <h1 className="font-retro text-6xl text-[#dc5128] mb-4">{score > 30 ? "Arrasou!" : "Quase..."}</h1>
+                        <h1 className="font-retro text-6xl text-[#dc5128] mb-4">{score >= 30 ? "Mandou Bem!" : "Tente de novo"}</h1>
                         <div className="bg-[#fdfbf7] border-3 border-black p-6 rounded-xl mb-6 inline-block w-full">
                             <p className="text-sm font-bold uppercase text-gray-500 mb-2">Pontos da Fase</p>
                             <p className="font-retro text-7xl text-[#1a1a1a] leading-none">{score}</p>
-                            <p className="text-lg font-bold mt-2 text-gray-600">Total: {totalScore}</p>
+                            <p className="text-lg font-bold mt-2 text-gray-600">Total Acumulado: {totalScore}</p>
                         </div>
                         <div className="flex flex-col gap-3">
                             {passed && nextLevelId && (
                                 <Button onClick={() => onNextLevel(nextLevelId)} variant="secondary" className="w-full">
-                                    Próximo Nível <i data-lucide="arrow-right"></i>
+                                    Jogar Próximo Nível <i data-lucide="arrow-right"></i>
                                 </Button>
                             )}
                             <Button onClick={onMenu} variant="white" className="w-full">
-                                <i data-lucide="list"></i> Voltar ao Menu
+                                <i data-lucide="list"></i> Voltar ao Menu de Níveis
                             </Button>
                             <Button onClick={onRestart} variant="white" className="w-full text-sm">
-                                <i data-lucide="rotate-ccw"></i> Tela Inicial
+                                <i data-lucide="rotate-ccw"></i> Escolher Outro Tema
                             </Button>
                         </div>
                     </div>
@@ -403,26 +491,81 @@
         };
 
         const App = () => {
-            const [screen, setScreen] = useState('start');
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [screen, setScreen] = useState('login'); // Start at Login
             const [theme, setTheme] = useState('');
+            const [loadingQuestions, setLoadingQuestions] = useState(false);
+            
+            // Estado Global de Perguntas para o Tema Atual
+            const [allQuestions, setAllQuestions] = useState({ easy: [], medium: [], hard: [] });
+
             const [level, setLevel] = useState('easy');
             const [score, setScore] = useState(0);
             const [totalScore, setTotalScore] = useState(0);
 
-            const startGame = (t) => { setTheme(t); setScreen('menu'); setTotalScore(0); };
-            const selectLevel = (l) => { setLevel(l); setScore(0); setScreen('quiz'); };
-            const finishQuiz = (s) => { setScore(s); setTotalScore(p => p + s); setScreen('result'); };
-            const nextLevel = (l) => { setLevel(l); setScore(0); setScreen('quiz'); };
-            const restart = () => { setTheme(''); setTotalScore(0); setScreen('start'); };
+            // Fluxo de Auth
+            const handleLoginSuccess = () => {
+                setIsAuthenticated(true);
+                setScreen('start');
+            };
+
+            // Fluxo do Jogo
+            const startGame = async (selectedTheme) => {
+                setTheme(selectedTheme);
+                setLoadingQuestions(true);
+                
+                // Fetch all 15 questions
+                const result = await fetchAllQuestionsFromGPT(selectedTheme);
+                
+                setLoadingQuestions(false);
+
+                if (result.error) {
+                    alert(result.error);
+                } else {
+                    setAllQuestions(result);
+                    setScreen('menu');
+                    setTotalScore(0);
+                }
+            };
+
+            const selectLevel = (l) => { 
+                setLevel(l); 
+                setScore(0); 
+                setScreen('quiz'); 
+            };
+
+            const finishQuiz = (s, currentLevel) => { 
+                setScore(s); 
+                setTotalScore(p => p + s); 
+                setScreen('result'); 
+            };
+
+            const nextLevel = (nextLvlId) => { 
+                setLevel(nextLvlId); 
+                setScore(0); 
+                setScreen('quiz'); 
+            };
+
+            const restart = () => { 
+                setTheme(''); 
+                setAllQuestions({ easy: [], medium: [], hard: [] });
+                setTotalScore(0); 
+                setScreen('start'); 
+            };
+
             const backToMenu = () => { setScreen('menu'); };
 
             useEffect(() => { if(window.lucide) window.lucide.createIcons(); }, [screen]);
 
+            if (!isAuthenticated) {
+                return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+            }
+
             return (
                 <>
-                    {screen === 'start' && <StartScreen onStart={startGame} />}
+                    {screen === 'start' && <StartScreen onStart={startGame} loading={loadingQuestions} />}
                     {screen === 'menu' && <MenuScreen theme={theme} onSelectLevel={selectLevel} onBack={restart} />}
-                    {screen === 'quiz' && <QuizScreen theme={theme} level={level} onFinish={finishQuiz} onAbort={backToMenu} />}
+                    {screen === 'quiz' && <QuizScreen theme={theme} level={level} questions={allQuestions[level]} onFinish={finishQuiz} onAbort={backToMenu} />}
                     {screen === 'result' && <ResultScreen score={score} totalScore={totalScore} level={level} onRestart={restart} onNextLevel={nextLevel} onMenu={backToMenu} />}
                 </>
             );
