@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre Nós - Feira das Profissões CETI Petrônio Portela</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=VT323&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --navy-dark: #050A14;
+            --navy-light: #112240;
+            --orange-burnt: #CC5500;
+            --beige: #E0E0D0;
+            --green-phosphor: #39FF14;
+            --scanline: rgba(0, 0, 0, 0.15);
+            --glass: rgba(17, 34, 64, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--navy-dark);
+            color: var(--beige);
+            font-family: 'Roboto Mono', monospace;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'VT323', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* CRT Scanline Effect */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header / Nav (Optional simple nav) */
+        nav {
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--orange-burnt);
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-family: 'VT323', monospace;
+            font-size: 1.5rem;
+            color: var(--green-phosphor);
+            text-shadow: 0 0 5px var(--green-phosphor);
+        }
+
+        /* BLOCO 1: INTRODUÇÃO */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 60px 0;
+            gap: 40px;
+        }
+
+        @media (min-width: 768px) {
+            .hero {
+                flex-direction: row;
+                justify-content: space-between;
+                text-align: left;
+            }
+
+            .hero-content {
+                max-width: 50%;
+            }
+
+            .hero-image {
+                max-width: 45%;
+            }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            line-height: 1;
+            margin-bottom: 20px;
+            color: var(--orange-burnt);
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .hero-text {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            border-left: 4px solid var(--green-phosphor);
+            padding-left: 20px;
+        }
+
+        .hero-image img {
+            width: 100%;
+            border: 2px solid var(--green-phosphor);
+            box-shadow: 0 0 15px var(--green-phosphor);
+            border-radius: 4px;
+            filter: sepia(20%) hue-rotate(180deg) saturate(150%) brightness(90%);
+            /* Slight retro filter adjustment */
+            filter: none;
+            /* Resetting filter to show original nice colors */
+        }
+
+        /* BLOCO 2: COLABORAÇÃO */
+        .collaboration {
+            background-color: var(--navy-light);
+            padding: 80px 0;
+            margin: 60px 0;
+            border-top: 2px solid var(--orange-burnt);
+            border-bottom: 2px solid var(--orange-burnt);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .collaboration::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(var(--orange-burnt) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .collab-content {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .collab-title {
+            font-size: 2.5rem;
+            color: var(--green-phosphor);
+            margin-bottom: 30px;
+        }
+
+        .collab-text {
+            font-size: 1.2rem;
+        }
+
+        /* BLOCO 3: GALERIA (Cartuchos) */
+        .gallery-section {
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .gallery-title {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            color: var(--beige);
+        }
+
+        .cartridge-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 30px;
+            padding: 20px;
+            scroll-behavior: smooth;
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .cartridge-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cartridge {
+            flex: 0 0 300px;
+            background-color: #333;
+            border-radius: 10px 10px 0 0;
+            position: relative;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .cartridge:hover {
+            transform: translateY(-10px);
+        }
+
+        /* Cartridge Shape CSS */
+        .cartridge-body {
+            background-color: #2a2a2a;
+            /* Dark grey plastic */
+            height: 350px;
+            border-radius: 5px;
+            border: 4px solid #1a1a1a;
+            border-bottom: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 20px;
+            position: relative;
+        }
+
+        /* The "Grip" lines on a cartridge */
+        .cartridge-grip {
+            width: 80%;
+            height: 2px;
+            background-color: #111;
+            margin-bottom: 4px;
+        }
+
+        .cartridge-label {
+            width: 85%;
+            height: 220px;
+            background-color: var(--beige);
+            margin-top: 20px;
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #000;
+        }
+
+        .label-art {
+            flex: 1;
+            background: linear-gradient(45deg, var(--navy-dark), var(--navy-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--green-phosphor);
+            font-family: 'VT323', monospace;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        /* Specific Art Styles */
+        .art-invaders {
+            background: linear-gradient(135deg, #000000, #003300);
+        }
+
+        .art-web {
+            background: linear-gradient(135deg, #000044, #CC5500);
+        }
+
+        .art-interactive {
+            background: linear-gradient(135deg, #330033, #00FF41);
+        }
+
+        .label-text {
+            background-color: var(--orange-burnt);
+            color: #fff;
+            padding: 5px;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .cartridge-bottom {
+            height: 20px;
+            background-color: #1a1a1a;
+            width: 90%;
+            margin: 0 auto;
+            border-radius: 0 0 5px 5px;
+        }
+
+        /* BLOCO 4: CONCLUSÃO */
+        .conclusion {
+            text-align: center;
+            padding: 80px 0;
+            background: radial-gradient(circle at center, var(--navy-light) 0%, var(--navy-dark) 100%);
+        }
+
+        .impact-phrase {
+            font-size: 2rem;
+            margin-bottom: 40px;
+            color: var(--beige);
+            font-family: 'VT323', monospace;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: transparent;
+            color: var(--green-phosphor);
+            font-family: 'VT323', monospace;
+            font-size: 1.5rem;
+            text-decoration: none;
+            border: 2px solid var(--green-phosphor);
+            box-shadow: 4px 4px 0 var(--green-phosphor);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .cta-button:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--green-phosphor);
+            background-color: rgba(57, 255, 20, 0.1);
+        }
+
+        .cta-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            opacity: 0.6;
+            border-top: 1px solid #333;
+        }
+
+        /* Animations */
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.5rem;
+            background-color: var(--green-phosphor);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body class="crt">
+
+    <div class="container">
+        <nav>
+            <div class="logo">&lt;CETI_PP /&gt;</div>
+            <div style="font-family: 'VT323'; font-size: 1.2rem;">FEIRA.EXE</div>
+        </nav>
+
+        <!-- BLOCO 1 -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">PROGRAMANDO O FUTURO COM INSPIRAÇÃO DO PASSADO</h1>
+                <p class="hero-text">
+                    Na nossa Feira das Profissões, decidimos olhar para trás para dar um salto para frente. Usamos a
+                    estética retrô dos anos 70, 80, 90 e 2000 como tela em branco para nossa criatividade.
+                </p>
+            </div>
+            <div class="hero-image">
+                <img src="hero-image.png" alt="Computador antigo com código moderno">
+            </div>
+        </section>
+    </div>
+
+    <!-- BLOCO 2 -->
+    <section class="collaboration">
+        <div class="container collab-content">
+            <h2 class="collab-title">A UNIÃO FAZ A FORÇA (E O CÓDIGO)</h2>
+            <p class="collab-text">
+                Esta página é o resultado de uma colaboração única. Derrubamos as paredes das salas de aula e unimos a
+                energia das turmas de <strong style="color: var(--orange-burnt);">Jogos Digitais</strong> (1º e 2º anos)
+                com a experiência técnica da turma de <strong style="color: var(--green-phosphor);">Informática</strong>
+                (3º ano). Aprender juntos é o nosso melhor projeto.
+            </p>
+        </div>
+    </section>
+
+    <!-- BLOCO 3 -->
+    <div class="container gallery-section">
+        <h2 class="gallery-title">O QUE CRIAMOS</h2>
+        <div class="cartridge-container">
+
+            <!-- Cartridge 1 -->
+            <div class="cartridge">
+                <div class="cartridge-body">
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-label">
+                        <div class="label-art art-invaders">
+                            👾
+                        </div>
+                        <div class="label-text">Space Invaders</div>
+                    </div>
+                </div>
+                <div class="cartridge-bottom"></div>
+            </div>
+
+            <!-- Cartridge 2 -->
+            <div class="cartridge">
+                <div class="cartridge-body">
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-label">
+                        <div class="label-art art-web">
+                            🌐
+                        </div>
+                        <div class="label-text">Web Design Retrô</div>
+                    </div>
+                </div>
+                <div class="cartridge-bottom"></div>
+            </div>
+
+            <!-- Cartridge 3 -->
+            <div class="cartridge">
+                <div class="cartridge-body">
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-label">
+                        <div class="label-art art-interactive">
+                            🎮
+                        </div>
+                        <div class="label-text">Exp. Interativas</div>
+                    </div>
+                </div>
+                <div class="cartridge-bottom"></div>
+            </div>
+
+            <!-- Cartridge 4 (Extra for scroll effect) -->
+            <div class="cartridge">
+                <div class="cartridge-body">
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-grip"></div>
+                    <div class="cartridge-label">
+                        <div class="label-art" style="background: #444;">
+                            ?
+                        </div>
+                        <div class="label-text">E muito mais...</div>
+                    </div>
+                </div>
+                <div class="cartridge-bottom"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- BLOCO 4 -->
+    <section class="conclusion">
+        <div class="container">
+            <p class="impact-phrase">
+                CETI Petrônio Portela: Onde a tecnologia é humana e divertida.<span class="cursor"></span>
+            </p>
+            <a href="https://redirectfp.netlify.app" class="cta-button">Explore a Feira</a>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2025 CETI Petrônio Portela - Feira das Profissões
+    </footer>
+
+    <script>
+        // Simple scroll reveal effect
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(20px)';
+            section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(section);
+        });
+    </script>
+</body>
+
+</html>
